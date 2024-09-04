@@ -42,7 +42,6 @@
   |^
   ?+    mark  (on-poke:def mark vase)
       %handle-http-request
-    ?>  =(src.bowl our.bowl)
     =^  cards  state
       (handle-http !<([@ta =inbound-request:eyre] vase))
     [cards this]
