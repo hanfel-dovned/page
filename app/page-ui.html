@@ -53,7 +53,7 @@
       'application/javascript':'application-javascript','text/javascript':'text-javascript',
       'application/json':'application-json','application/xml':'application-xml','text/xml':'text-xml',
       'image/png':'image-png','image/jpeg':'image-jpeg','image/gif':'image-gif','image/svg+xml':'image-svg',
-      'application/pdf':'application-pdf','audio/mpeg':'audio-mpeg','video/mp4':'video-mp4'
+      'application/pdf':'application-pdf','audio/mpeg':'audio-mpeg','video/mp4':'video-mp4','application/quicktime': 'video-mov'
     };
     const tagForMime=m=>mimeToTag[m]; // returns undefined if not mapped
     const isTextTag=tag=>tag&& (tag.startsWith('text')||tag==='html'||tag==='application-javascript'||tag==='application-json'||tag==='application-xml');
