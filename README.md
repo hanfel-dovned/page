@@ -1,9 +1,11 @@
-On October 20, I offered a bounty ([text](https://hatryx-lastud.tlon.network/newsletter/the-truth-about-all-crucial-things-is-presented-between-the-lines), [video](https://www.youtube.com/watch?v=Ud-FZEUtC5M&feature=youtu.be)) for an Urbit app that could serve any arbitrary HTML to the normie web.
+# %page
 
-I said we'd move fast, no bureaucracy.
+> On October 20, I offered a bounty ([text](https://hatryx-lastud.tlon.network/newsletter/the-truth-about-all-crucial-things-is-presented-between-the-lines), [video](https://www.youtube.com/watch?v=Ud-FZEUtC5M&feature=youtu.be)) for an Urbit app that could serve any arbitrary HTML to the normie web.
 
-On October 21, I received a DM from ~hanfel-dovned.
+> I said we'd move fast, no bureaucracy.
 
-The app was built.
+> On October 21, I received a DM from ~hanfel-dovned.
 
-(Soon) Get the %page app at ~dister-hatryx-lastud/page.
+> The app was built.
+
+I built %page for Justin Murphy a few years ago for a bounty. Since then it's become probably the most useful Urbit app I have installed. I recently updated it for file uploads too. You can install it for yourself from ~ridlyd.
