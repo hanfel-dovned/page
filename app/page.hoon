@@ -1,4 +1,4 @@
-/-  page, wallet=zig-wallet
+/-  page
 /+  dbug, default-agent, server, schooner
 /*  page-ui  %html  /app/page-ui/html
 |%
@@ -63,7 +63,7 @@
         [302 ~ [%login-redirect './apps/page']]
       ?~  body.request.inbound-request
         [(send [405 ~ [%stock ~]]) state]
-      =/  json  (de-json:html q.u.body.request.inbound-request)
+      =/  json  (de:json:html q.u.body.request.inbound-request)
       =/  action  (dejs-action +.json)
       (handle-action action)
       ::
@@ -115,7 +115,6 @@
     %-  of
     :~  [%new-page (at ~[so so])]
         [%delete-page so]
-        [%tip (se %ud)]
     ==
   ::
   ++  handle-action
@@ -129,39 +128,6 @@
     ::
         %delete-page
       `state(pages (~(del by pages) url:action))
-    ::
-        %tip
-      ::  produce tip transaction and send to uqbar %wallet
-      =/  user-address=@ux
-        =-  ?>  ?=(%addresses -.-)
-            (head ~(tap in saved.-))
-        .^  wallet-update:wallet  %gx
-            /(scot %p our.bowl)/wallet/(scot %da now.bowl)/addresses/noun
-        ==
-      =/  zigs-account-id=@ux
-        %:  hash-data:smart:wallet
-            0x74.6361.7274.6e6f.632d.7367.697a
-            user-address
-            0x0
-            `@`'zigs'
-        ==
-      ::
-      :_  state  :_  ~
-      :*  %pass  /tip-poke
-          %agent  [our.bowl %uqbar]
-          %poke  %wallet-poke
-          !>  ^-  wallet-poke:wallet
-          :*  %transaction
-              ~
-              from=user-address
-              contract=0x74.6361.7274.6e6f.632d.7367.697a
-              town=0x0
-              :^    %give
-                  to=page-tip-address:page
-                amount.action
-              item=zigs-account-id
-          ==
-      ==
     ==
   --
 ++  on-peek  on-peek:def
