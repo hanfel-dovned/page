@@ -53,6 +53,7 @@
     [%text-xml p=@]                             :: xml
     [%video-avi p=@]                            :: avi
     [%video-mp4 p=@]                            :: mp4
+    [%video-mov p=@]                            :: mov
     [%video-mpeg p=@]                           :: mpeg
     [%video-ogg p=@]                            :: ogv
     [%video-webm p=@]                           :: webm
@@ -243,6 +244,11 @@
     :_  `(as-octs:mimes:html p.resource)
     :-  http-status
     (weld headers ['content-type'^'video/mp4']~)
+    ::
+      %video-mov
+    :_  `(as-octs:mimes:html p.resource)
+    :-  http-status
+    (weld headers ['content-type'^'video/mov']~)
     ::
       %video-mpeg
     :_  `(as-octs:mimes:html p.resource)
