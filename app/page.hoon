@@ -1,16 +1,18 @@
-/-  page
+/-  *page
 /+  dbug, default-agent, server, schooner
 /*  page-ui  %html  /app/page-ui/html
 |%
 +$  versioned-state
   $%  state-0
+      state-1
   ==
 +$  state-0  [%0 pages=(map url=@t html=@t)]
++$  state-1  [%1 pages=(map url=@t [tag=@tas data=@])]
 +$  card  card:agent:gall
 --
 %-  agent:dbug
 ^-  agent:gall
-=|  state-0
+=|  state-1
 =*  state  -
 |_  =bowl:gall
 +*  this  .
@@ -18,10 +20,9 @@
 ++  on-init
   ^-  (quip card _this)
   :_  this
-  :~
-    :*  %pass  /eyre/connect  %arvo  %e
-        %connect  `/apps/page  %page
-    ==
+  :~  :*  %pass  /eyre/connect  %arvo  %e
+          %connect  `/apps/page  %page
+      ==
   ==
 ::
 ++  on-save
@@ -32,8 +33,20 @@
   |=  old-state=vase
   ^-  (quip card _this)
   =/  old  !<(versioned-state old-state)
-  ?-  -.old
-    %0  `this(state old)
+  ?-    -.old
+      %1  `this(state old)
+  ::
+      %0
+    :-  ~
+    %=  this
+      state
+      :-  %1
+      %-  malt
+      %+  turn
+        ~(tap by pages.old)
+      |=  [url=@t html=@t]
+      [url [%html `@`html]]
+    ==
   ==
 ::
 ++  on-poke
@@ -65,69 +78,70 @@
         [(send [405 ~ [%stock ~]]) state]
       =/  json  (de:json:html q.u.body.request.inbound-request)
       =/  action  (dejs-action +.json)
-      (handle-action action)
+      =^  cards  state
+        (handle-action action)
+      :_  state
+      (send [200 ~ [%none ~]])
       ::
         %'GET'
+      :_  state
       ?+    site
-          :_  state
           (send [404 ~ [%plain "404 - Not Found"]])
-        ::
+      ::
           [%apps %page ~]
         ?.  authenticated.inbound-request
-          :_  state
-          %-  send
-          [302 ~ [%login-redirect './apps/page']]
-        :_  state
+          (send [302 ~ [%login-redirect './apps/page']])
         (send [200 ~ [%html page-ui]])
-          ::
+        ::
           [%apps %page %state ~]
         ?.  authenticated.inbound-request
-          :_  state
-          %-  send
-          [302 ~ [%login-redirect './apps/page']]
-        :_  state
-        (send [200 ~ [%json (enjs-state +.state)]])
-          ::
+          (send [302 ~ [%login-redirect './apps/page']])
+        (send [200 ~ [%json enjs-state]])
+        ::
           [%apps %page @tas ~]
-        :_  state
-        (send [200 ~ [%html (~(got by pages) `@t`+>-.site)]])
+        =/  c  (~(got by pages) `@t`+>-.site)
+        =/  resource  ;;(resource:schooner [tag.c data.c])
+        (send [200 ~ resource])
       ==
     ==
   ::
   ++  enjs-state
     =,  enjs:format
-    |=  state=(map @t @t)
     ^-  json
     :-  %a
     %+  turn
-      %~  tap  by  state
-    |=  pare=[@t @t]
-    :-  %a
-    :~  [%s -.pare]
-        [%s +.pare]
+      %~  tap  by  pages
+    |=  [url=@t tag=@tas data=@]
+    %-  pairs
+    :~  [%url [%s url]]
+        [%tag [%s tag]]
     ==
   ::
   ++  dejs-action
     =,  dejs:format
     |=  jon=json
-    ^-  action:^page
+    ^-  action
     %.  jon
     %-  of
-    :~  [%new-page (at ~[so so])]
+    :~  [%new-page (ot ~[url+so tag+so data+so])]
         [%delete-page so]
     ==
   ::
   ++  handle-action
-    |=  =action:page
+    |=  act=action
     ^-  (quip card _state)
     ?>  =(src.bowl our.bowl)
-    ?-    -.action
+    ?-    -.act
         %new-page
-      ?>  ?!  =(url:action 'state')
-      `state(pages (~(put by pages) url:action html:action))
+      ?>  ?!  =(url.act 'state')
+      =/  data
+        ?:  =(%html tag.act)
+          data.act
+        q:(need (de:base64:mimes:html data.act))
+      `state(pages (~(put by pages) url.act tag.act data))
     ::
         %delete-page
-      `state(pages (~(del by pages) url:action))
+      `state(pages (~(del by pages) url.act))
     ==
   --
 ++  on-peek  on-peek:def

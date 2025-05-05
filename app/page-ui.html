@@ -4,165 +4,157 @@
   <meta charset="utf-8">
   <title>&lt;page/&gt;</title>
   <style>
-    /* —— minimalist dark theme —— */
-    :root {
-      --bg: #000c13;
-      --panel: #111928;
-      --text: #c7c7c7;
-      --accent: #146e91dc;
-    }
-
-    * { box-sizing: border-box; font-family: Arial, sans-serif; }
-    body { margin: 0; padding: 2rem; background: var(--bg); color: var(--text); }
-
-    h1, h2 { margin: 0 0 1rem 0; font-weight: 500; }
-    h1 { font-size: 1.8rem; }
-    h2 { font-size: 1.2rem; margin-top: 2rem; }
-
-    label { display: block; margin-top: 1rem; font-weight: 700; }
-
-    input[type="text"], textarea {
-      width: 100%;
-      padding: 0.6rem;
-      background: var(--panel);
-      border: 1px solid var(--accent);
-      border-radius: 6px;
-      color: var(--text);
-      font-size: 1rem;
-    }
-
-    textarea { height: 260px; font-family: monospace; resize: vertical; }
-
-    button {
-      margin-top: 1rem;
-      padding: 0.5rem 1rem;
-      background: var(--panel);
-      border: 1px solid var(--accent);
-      border-radius: 6px;
-      color: var(--text);
-      cursor: pointer;
-      font-weight: 700;
-    }
-    button:hover { background: var(--accent); }
-
-    /* list of pages */
-    .page-item {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 0.5rem;
-      margin-top: 0.8rem;
-      padding: 0.6rem;
-      background: var(--panel);
-      border: 1px solid var(--accent);
-      border-radius: 6px;
-    }
-    .page-item span { flex: 1 1 auto; font-weight: 700; word-break: break-all; }
-    .page-item button { padding: 0.25rem 0.6rem; font-size: 0.8rem; }
+    :root{--bg:#000c13;--panel:#111928;--text:#c7c7c7;--accent:#146e91dc}
+    *{box-sizing:border-box;font-family:Arial, sans-serif}
+    body{margin:0;padding:2rem;background:var(--bg);color:var(--text)}
+    h1,h2{margin:0 0 1rem;font-weight:500}
+    h1{font-size:1.8rem}
+    h2{font-size:1.2rem;margin-top:2rem}
+    label{display:block;margin-top:1rem;font-weight:700}
+    input[type="text"],textarea{width:100%;padding:.6rem;background:var(--panel);border:1px solid var(--accent);border-radius:6px;color:var(--text);font-size:1rem}
+    textarea{height:260px;font-family:monospace;resize:vertical}
+    input[type="file"]{margin-top:.5rem;color:var(--text)}
+    button{margin-top:1rem;padding:.5rem 1rem;background:var(--panel);border:1px solid var(--accent);border-radius:6px;color:var(--text);cursor:pointer;font-weight:700}
+    button[disabled]{opacity:.6;cursor:not-allowed}
+    button:hover:not([disabled]){background:var(--accent)}
+    .spinner{display:inline-block;width:14px;height:14px;border:2px solid #f3f3f3;border-top:2px solid var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin-left:6px}
+    @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+    .page-item{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin-top:.8rem;padding:.6rem;background:var(--panel);border:1px solid var(--accent);border-radius:6px}
+    .page-item span{flex:1 1 auto;font-weight:700;word-break:break-all}
+    .page-item button{padding:.25rem .6rem;font-size:.8rem}
   </style>
 </head>
 <body>
   <h1>&lt;page /&gt;</h1>
 
-  <!-- ——— create / update form ——— -->
   <form id="pageForm" onsubmit="return false;">
     <label for="nameBox">Page name</label>
-    <input id="nameBox" maxlength="20" autocomplete="off" />
+    <input id="nameBox" maxlength="60" autocomplete="off" placeholder="my-file-or-page" />
 
-    <label for="htmlInput">HTML</label>
-    <textarea id="htmlInput" placeholder="Paste your HTML here"></textarea>
+    <label for="fileInput">Upload a file (optional, ≤ 5 MB)</label>
+    <input type="file" id="fileInput" />
+
+    <label for="htmlInput">Text / HTML (used when no file is selected, ≤ 5 MB)</label>
+    <textarea id="htmlInput" placeholder="Paste or type your text / html here"></textarea>
 
     <button id="saveBtn" type="button">Create Page</button>
   </form>
 
-  <!-- ——— existing pages ——— -->
   <h2>My Pages</h2>
   <div id="listView"></div>
 
   <script>
-    // =============== data helpers ===============
-    let state = [];
+    /* ===== 0. constants ===== */
+    const MAX_BYTES=5*1024*1024; // 5 MB
 
-    function post(tag, data) {
-      fetch('/apps/page', {
-        method: 'POST',
-        body: JSON.stringify({ [tag]: data })
+    /* ===== 1. mime → tag map ===== */
+    const mimeToTag={
+      'text/html':'html','text/plain':'text-plain','text/css':'text-css',
+      'application/javascript':'application-javascript','text/javascript':'text-javascript',
+      'application/json':'application-json','application/xml':'application-xml','text/xml':'text-xml',
+      'image/png':'image-png','image/jpeg':'image-jpeg','image/gif':'image-gif','image/svg+xml':'image-svg',
+      'application/pdf':'application-pdf','audio/mpeg':'audio-mpeg','video/mp4':'video-mp4'
+    };
+    const tagForMime=m=>mimeToTag[m]; // returns undefined if not mapped
+    const isTextTag=tag=>tag&& (tag.startsWith('text')||tag==='html'||tag==='application-javascript'||tag==='application-json'||tag==='application-xml');
+
+    /* ===== 2. helpers ===== */
+    function bufToBase64(buf){
+      const bytes=new Uint8Array(buf);let binary='';const chunk=0x8000;
+      for(let i=0;i<bytes.length;i+=chunk){binary+=String.fromCharCode.apply(null,bytes.subarray(i,i+chunk));}
+      return btoa(binary);
+    }
+    async function sizeOfText(text){return new Blob([text]).size;}
+
+    /* ===== 3. network helpers ===== */
+    async function getState(){const r=await fetch('/apps/page/state');return r.json();}
+    function postJson(tag,obj){
+      return fetch('/apps/page',{method:'POST',body:JSON.stringify({[tag]:obj})});
+    }
+
+    /* ===== 4. dom refs ===== */
+    const nameBox=document.getElementById('nameBox');
+    const fileInput=document.getElementById('fileInput');
+    const htmlInput=document.getElementById('htmlInput');
+    const saveBtn=document.getElementById('saveBtn');
+    const listView=document.getElementById('listView');
+
+    let state=[];
+
+    /* ===== 5. render list ===== */
+    function refreshSaveBtn(){const url=nameBox.value.trim();saveBtn.textContent=state.some(e=>e.url===url)?'Save Page':'Create Page';}
+    function renderPages(){
+      listView.innerHTML='';
+      state.forEach(({url,tag})=>{
+        const row=document.createElement('div');row.className='page-item';
+        row.innerHTML=`<span>${url}</span>`;
+        if(isTextTag(tag)){
+          const load=document.createElement('button');load.textContent='Load';load.onclick=()=>importText(url);row.appendChild(load);
+        }
+        const open=document.createElement('button');open.textContent='Open';open.onclick=()=>window.open(`${window.origin}/apps/page/${url}`,'_blank');row.appendChild(open);
+        const del=document.createElement('button');del.textContent='Delete';del.onclick=()=>deletePage(url);row.appendChild(del);
+        listView.appendChild(row);
       });
     }
 
-    async function getState() {
-      const res = await fetch('/apps/page/state');
-      return res.json();
+    /* ===== 6. core actions ===== */
+    async function loadAndRender(){state=await getState();renderPages();refreshSaveBtn();}
+
+    async function importText(url){
+      if(htmlInput.value&& !confirm('Unsaved changes will be lost. Continue?'))return;
+      const r=await fetch(`/apps/page/${url}`);
+      htmlInput.value=await r.text();
+      nameBox.value=url;fileInput.value='';refreshSaveBtn();window.scrollTo({top:0,behavior:'smooth'});
     }
 
-    // =============== UI helpers ===============
-    function refreshSaveBtn() {
-      const name = nameBox.value.trim();
-      saveBtn.textContent = state.some(([n]) => n === name) ? 'Save Page' : 'Create Page';
+    async function deletePage(url){if(!confirm(`Delete ${url}?`))return;await postJson('delete-page',url);await loadAndRender();}
+
+    function setLoading(btn,isLoading){
+      if(isLoading){
+        btn.disabled=true;
+        btn.dataset.origText=btn.textContent;
+        btn.innerHTML=`${btn.textContent}<span class="spinner"></span>`;
+      }else{
+        btn.disabled=false;
+        btn.innerHTML=btn.dataset.origText;
+      }
     }
 
-    function renderPages() {
-      listView.innerHTML = '';
-      state.forEach(([name, html], i) => {
-        const div = document.createElement('div');
-        div.className = 'page-item';
+    async function savePage(){
+      const url=nameBox.value.trim();
+      if(!url){alert('Name required');return;}
+      if(!/^[A-Za-z0-9_.-]+$/.test(url)){alert('Name can only contain letters, numbers, _ . -');return;}
 
-        div.innerHTML = `
-          <span>${name}</span>
-          <button onclick="importPage(${i})">Load</button>
-          <button onclick="openPage('${name}')">Open</button>
-          <button onclick="deletePage('${name}')">Delete</button>
-        `;
-        listView.appendChild(div);
-      });
+      try{
+        setLoading(saveBtn,true);
+
+        if(fileInput.files.length){
+          const file=fileInput.files[0];
+          if(file.size>MAX_BYTES){alert('File exceeds 5 MB limit');return;}
+          const tag=tagForMime(file.type);
+          if(!tag){alert(`Unsupported file type: ${file.type||'unknown'}`);return;}
+          const buf=await file.arrayBuffer();
+          const data=bufToBase64(buf);
+          const res=await postJson('new-page',{url,tag,data});
+          if(!res.ok){throw new Error('Upload failed');}
+        }else{
+          const data=htmlInput.value;
+          const bytes=await sizeOfText(data);
+          if(bytes>MAX_BYTES){alert('Text exceeds 5 MB limit');return;}
+          if(!data){alert('No content');return;}
+          const res=await postJson('new-page',{url,tag:'html',data});
+          if(!res.ok){throw new Error('Upload failed');}
+        }
+
+        await loadAndRender();
+        htmlInput.value='';fileInput.value='';
+      }catch(e){alert(e.message||'Unknown error');}
+      finally{setLoading(saveBtn,false);}
     }
 
-    // =============== actions ===============
-    async function loadAndRender() {
-      state = (await getState()) || [];
-      renderPages();
-      refreshSaveBtn();
-    }
-
-    async function savePage() {
-      const name = nameBox.value.trim();
-      const html = htmlInput.value;
-
-      if (!name) { alert('Name required'); return; }
-      if (!/^[a-zA-Z0-9_.-]+$/.test(name)) { alert('Name can only contain letters, numbers, \'_ . -\''); return; }
-      if (!html) { alert('HTML is empty'); return; }
-
-      const exists = state.some(([n]) => n === name);
-      if (exists && !confirm('Page exists. Overwrite?')) return;
-
-      post('new-page', [name, html]);
-      await loadAndRender();
-    }
-
-    function importPage(i) {
-      const [name, html] = state[i];
-      if (htmlInput.value && !confirm('Unsaved changes will be lost. Continue?')) return;
-      nameBox.value = name;
-      htmlInput.value = html;
-      refreshSaveBtn();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    async function deletePage(name) {
-      if (!confirm(`Delete ${name}?`)) return;
-      post('delete-page', name);
-      await loadAndRender();
-    }
-
-    function openPage(name) {
-      window.open(`${window.origin}/apps/page/${name}`, '_blank');
-    }
-
-    // =============== events ===============
-    nameBox.addEventListener('input', refreshSaveBtn);
-    saveBtn.addEventListener('click', savePage);
-
-    // first load
+    /* ===== 7. events & init ===== */
+    nameBox.addEventListener('input',refreshSaveBtn);
+    saveBtn.addEventListener('click',savePage);
     loadAndRender();
   </script>
 </body>
